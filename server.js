@@ -7,7 +7,11 @@ import dbConnector from './postgres-connector.js'
  * @type {import('fastify').FastifyInstance} Instance of Fastify
  */
 const fastify = Fastify({
-    logger: true
+    logger: {
+        transport: {
+            target: 'pino-pretty'
+        },
+    }
 })
 
 
