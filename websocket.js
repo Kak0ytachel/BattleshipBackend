@@ -1,4 +1,18 @@
-// function handle_send()
+/**
+ *
+ * @this {SocketStream}
+ * @param {string} type
+ * @param {Object} payload
+ */
+function send_handle(type, payload) {
+    console.log( type, payload)
+    this.send(
+        JSON.stringify({
+            type: type,
+            payload: payload
+        })
+    )
+}
 
 /**
  * @type {Object<string, ((conn: SocketStream, payload: Object) => Promise<void>)>}
@@ -14,12 +28,15 @@ const HANDLERS = {
     },
 
     PING: (conn, payload) => {
-        conn.send(JSON.stringify({
-            type: 'PONG',
-            payload: {
-                date: Date.now()
-            }
-        }))
+        // conn.send(JSON.stringify({
+        //     type: 'PONG',
+        //     payload: {
+        //         date: Date.now()
+        //     }
+        // }))
+        conn.send_handle("PONG", {
+            date: Date.now()
+        })
     }
 }
 
@@ -30,6 +47,8 @@ const HANDLERS = {
 async function websocket_routes(fastify, options) {
     fastify.get('/websocket', { websocket: true },
         (connection /* SocketStream */, req /* FastifyRequest */) => {
+            // connection.send_handle = (...args) => {console.log(args); s};
+            connection.send_handle = send_handle;
             // console.log(connection)
             connection.on('message', (message) => {
                 message = JSON.parse(message);
