@@ -1,7 +1,8 @@
 import Fastify from 'fastify'
 import routes from './route.js'
+import websocket_routes from './websocket.js'
 import dbConnector from './postgres-connector.js'
-
+import fastifyWebsocket from "@fastify/websocket";
 
 /**
  * @type {import('fastify').FastifyInstance} Instance of Fastify
@@ -21,7 +22,9 @@ const fastify = Fastify({
 // })
 
 fastify.register(dbConnector)
+fastify.register(fastifyWebsocket)
 fastify.register(routes)
+fastify.register(websocket_routes)
 
 const start = async () => {
     // try {
