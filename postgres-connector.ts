@@ -1,12 +1,8 @@
-// ESM
 import fastifyPlugin from 'fastify-plugin'
 import fastifyPostgres from '@fastify/postgres'
+import type {FastifyInstance} from "fastify";
 
-/**
- * @param {FastifyInstance} fastify
- * @param {Object} options
- */
-async function dbConnector (fastify, options) {
+async function dbConnector (fastify: FastifyInstance, options: Object) {
     fastify.register(fastifyPostgres, {
         connectionString: 'postgres://postgres@localhost:5432/postgres?password=1111'
     }) // TODO: move password to env variable

@@ -1,17 +1,15 @@
 import Fastify from 'fastify'
-import routes from './route.js'
-import websocket_routes from './websocket.js'
-import dbConnector from './postgres-connector.js'
+import routes from './route.ts'
+import websocket_routes from './websocket.ts'
+import dbConnector from './postgres-connector.ts'
 import fastifyWebsocket from "@fastify/websocket";
 
-/**
- * @type {import('fastify').FastifyInstance} Instance of Fastify
- */
 const fastify = Fastify({
     logger: {
         transport: {
             target: 'pino-pretty'
         },
+        level: 'debug',
     }
 })
 
