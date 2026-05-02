@@ -2,7 +2,7 @@ import type {FastifyInstance} from "fastify";
 
 
 function send_handle(this: WebSocket, type: string, payload: Object) {
-    console.log(this, type, payload)
+    // console.log(this, type, payload)
     this.send(
         JSON.stringify({
             type: type,
