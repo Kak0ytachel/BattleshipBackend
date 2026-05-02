@@ -1,9 +1,12 @@
 import Fastify from 'fastify'
+
+import fastifyWebsocket from "@fastify/websocket";
+import fastifyCors from "@fastify/cors";
+import fastifyJwt from "@fastify/jwt";
+
 import routes from './route.ts'
 import websocket_routes from './websocket.ts'
 import dbConnector from './postgres-connector.ts'
-import fastifyWebsocket from "@fastify/websocket";
-import cors from "@fastify/cors";
 
 const fastify = Fastify({
     logger: {
@@ -19,16 +22,22 @@ fastify.register(dbConnector)
 fastify.register(fastifyWebsocket)
 fastify.register(routes)
 fastify.register(websocket_routes)
-fastify.register(cors, {
+fastify.register(fastifyCors, {
     origin: (origin: any, cb) => {
-        const hostname = new URL(origin).hostname
-        if(hostname === "localhost"){
+        const hostname = (origin)?(new URL(origin).hostname): "";
+        if(hostname === "localhost" || hostname === ""){
             //  Request from localhost will pass
             cb(null, true)
             return
         }
         // Generate an error on other origins, disabling access
         cb(new Error("Not allowed"), false)
+    }
+})
+fastify.register(fastifyJwt, {
+    secret: "abc", // TODO: replace with env variable
+    sign: {
+        expiresIn: '10m' // TODO: replace with higher value after propper testing
     }
 })
 
