@@ -1,5 +1,6 @@
 import type {FastifyInstance} from "fastify";
 
+const connectionList: {[key: number]: WebSocket & { send_handle: typeof send_handle } } = {}
 
 function send_handle(this: WebSocket, type: string, payload: Object) {
     // console.log(this, type, payload)
@@ -13,7 +14,8 @@ function send_handle(this: WebSocket, type: string, payload: Object) {
 
 const HANDLERS: { [key: string]: (conn: WebSocket & { send_handle: typeof send_handle }, payload: Object, user_id: number) => void } = {
     START: (conn, payload, user_id) => {
-        console.log(payload);
+        // console.log(payload);
+        console.log(connectionList);
     },
 
     PING: (conn, payload, user_id) => {
@@ -34,8 +36,8 @@ async function websocket_routes(fastify: FastifyInstance, options: Object) {
 
             const ticket = req.query.ticket ?? "";
             if (ticket === "") {
+                connection.send_handle("ERROR", {"error": "No ticket provided"});
                 connection.close();
-                connection.send_handle("ERROR", {"error": "No ticket provided"})
                 return
             }
             let payload: { user_id: number }
@@ -48,8 +50,9 @@ async function websocket_routes(fastify: FastifyInstance, options: Object) {
                 connection.close();
                 return
             }
-            const user_id = payload.user_id;
+            const user_id: number = payload.user_id;
             console.log("user_id ", user_id);
+            connectionList[user_id] = connection;
 
             // console.log("headers ", connection.headers);
             connection.on('message', (message: string) => {
@@ -64,6 +67,14 @@ async function websocket_routes(fastify: FastifyInstance, options: Object) {
                 }
             });
             connection.send_handle("HELLO", {})
+
+            connection.on('close', () => {
+                if (user_id in connectionList) {
+                    if (connectionList[user_id] === connection) {
+                        delete connectionList[user_id];
+                    }
+                }
+            })
         }
     );
 
@@ -75,7 +86,7 @@ async function websocket_routes(fastify: FastifyInstance, options: Object) {
         }
         const payload: { user_id: string } = fastify.jwt.verify(token);
         const user_id = payload.user_id;
-        const ticket = fastify.jwt.sign({ user_id, type: "ticket" }, { expiresIn: '10m' })
+        const ticket = fastify.jwt.sign({ user_id, type: "ticket" }, { expiresIn: '1m' })
         return {ticket: ticket};
     })
 }
