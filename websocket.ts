@@ -12,13 +12,17 @@ function send_handle(this: WebSocket, type: string, payload: Object) {
     )
 }
 
-const HANDLERS: { [key: string]: (conn: WebSocket & { send_handle: typeof send_handle }, payload: Object, user_id: number) => void } = {
-    START: (conn, payload, user_id) => {
+const HANDLERS: { [key: string]:  (conn: WebSocket & { send_handle: typeof send_handle }, payload: Object, fastify: FastifyInstance, user_id: number) => Promise<void> } = {
+    START: async (conn, payload, fastify, user_id) => {
         // console.log(payload);
         console.log(connectionList);
+        const result = await fastify.pg.query("SELECT create_game ($1)", [user_id]);
+        const game_id = result.rows[0].create_game; // TODO: add error handling
+        conn.send_handle("ANS", {game_id: game_id}) //TODO: replace ANS type
+        //TODO: replace with game join code
     },
 
-    PING: (conn, payload, user_id) => {
+    PING: async (conn, payload, fastify, user_id) => {
         conn.send_handle("PONG", {
             date: Date.now(),
             user_id: user_id
@@ -55,11 +59,18 @@ async function websocket_routes(fastify: FastifyInstance, options: Object) {
             connectionList[user_id] = connection;
 
             // console.log("headers ", connection.headers);
-            connection.on('message', (message: string) => {
+            connection.on('message', async (message: string) => {
                 const messageObject: {type: string, payload: Object} = JSON.parse(message);
                 const { type, payload } = messageObject;
                 if (type in HANDLERS) {
-                    HANDLERS[type]?.(connection, payload, user_id)
+                    const fun =  HANDLERS[type];
+                    if (fun === undefined) {
+                        fastify.log.error("Handler found, but undefined: " + type)
+                        return
+                    }
+
+                    await fun(connection, payload, fastify, user_id);
+
                 }
                 else {
                     console.log('Unknown message type')
