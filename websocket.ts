@@ -13,13 +13,24 @@ function send_handle(this: WebSocket, type: string, payload: Object) {
 }
 
 const HANDLERS: { [key: string]:  (conn: WebSocket & { send_handle: typeof send_handle }, payload: Object, fastify: FastifyInstance, user_id: number) => Promise<void> } = {
-    START: async (conn, payload, fastify, user_id) => {
+    "CREATE-GAME": async (conn, payload, fastify, user_id) => {
         // console.log(payload);
-        console.log(connectionList);
+        // console.log(connectionList);
         const result = await fastify.pg.query("SELECT create_game ($1)", [user_id]);
-        const game_id = result.rows[0].create_game; // TODO: add error handling
-        conn.send_handle("ANS", {game_id: game_id}) //TODO: replace ANS type
-        //TODO: replace with game join code
+        const join_code = result.rows[0].create_game; // TODO: add error handling
+        conn.send_handle("JOIN-CODE", {join_code}) //TODO: replace ANS type
+    },
+
+    "JOIN-GAME": async (conn, payload, fastify, user_id) => {
+        // console.log(payload?.join_code);
+        const join_code = (payload as {join_code: string}).join_code;
+        const result = await fastify.pg.query("SELECT start_game ($1, $2)", [user_id, join_code]);
+        const success: boolean = result.rows[0].start_game;
+        if (success) {
+            conn.send_handle("START-GAME", {success})
+        } else {
+            conn.send_handle("ERROR", {error: "Invalid join code"}) // TODO: replace event type
+        }
     },
 
     PING: async (conn, payload, fastify, user_id) => {
