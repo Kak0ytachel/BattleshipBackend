@@ -4,7 +4,7 @@ import type {FastifyInstance} from "fastify";
 
 async function dbConnector (fastify: FastifyInstance, options: Object) {
     fastify.register(fastifyPostgres, {
-        connectionString: 'postgres://postgres@localhost:5432/postgres?password=1111'
+        connectionString: 'postgres://postgres@localhost:5432/postgres?password=1111&options=-csearch_path=battleship,public'
     }) // TODO: move password to env variable
 }
 
