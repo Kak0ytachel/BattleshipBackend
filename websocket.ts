@@ -25,6 +25,7 @@ const HANDLERS: { [key: string]:  (conn: WebSocket & { send_handle: typeof send_
         // console.log(payload?.join_code);
         const join_code = (payload as {join_code: string}).join_code;
         const result = await fastify.pg.query("SELECT start_game ($1, $2)", [user_id, join_code]);
+        // TODO: add error handling
         const success: boolean = result.rows[0].start_game;
         if (success) {
             conn.send_handle("START-GAME", {success})
