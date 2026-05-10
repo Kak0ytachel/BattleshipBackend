@@ -1,16 +1,14 @@
 -- Up Migration
 
-CREATE TABLE "battleship"."games" (
-  "game_id" serial4 NOT NULL,
-  "current_turn" int4,
-  "has_started" bool NOT NULL DEFAULT false,
-  "has_placed" bool NOT NULL DEFAULT false,
-  "has_ended" bool NOT NULL DEFAULT false,
-  "is_singleplayer" bool NOT NULL DEFAULT false,
-  "join_code" varchar(255) COLLATE "pg_catalog"."default" DEFAULT NULL::character varying,
-  CONSTRAINT "games_pkey" PRIMARY KEY ("game_id")
+CREATE TABLE "battleship"."users" (
+   "user_id" serial4 NOT NULL,
+   "name" varchar(255) COLLATE "pg_catalog"."default" DEFAULT 'Gracz'::character varying,
+   "games_won" int4 DEFAULT 0,
+   "games_lost" int4 DEFAULT 0,
+   "created_at" timestamp(0) DEFAULT now(),
+   CONSTRAINT "users_pkey" PRIMARY KEY ("user_id")
 );
 
 -- Down Migration
 
-DROP TABLE "battleship"."games";
+DROP TABLE "battleship"."users";
