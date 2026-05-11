@@ -29,9 +29,28 @@ const HANDLERS: { [key: string]:  (conn: WebSocket & { send_handle: typeof send_
         const success: boolean = result.rows[0].start_game;
         if (success) {
             conn.send_handle("START-GAME", {success})
+            // TODO: add sending to the second player
+            // const result2 = await fastify.pg.query("SELECT get_opponent ($1, $2)", [user_id, game_id])
+
         } else {
             conn.send_handle("ERROR", {error: "Invalid join code"}) // TODO: replace event type
         }
+    },
+
+    "PLACE-SHIPS": async (conn, payload, fastify, user_id) => {
+        const coordinates = ["A1", "B2", "C4", "C5"]
+        const game_id = 1;
+
+        const result = await fastify.pg.query("SELECT create_grid ($1, $2)", [user_id, coordinates]);
+        //TODO
+
+        // const ships = {
+        //     "A1": {
+        //         "has_ship": true,
+        //         "is_shot": false,
+        //         "attempted": false
+        //     }
+        // }
     },
 
     PING: async (conn, payload, fastify, user_id) => {
