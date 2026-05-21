@@ -6,6 +6,8 @@ CREATE TABLE "battleship"."players" (
      "role" int4,
      "is_active" bool NOT NULL DEFAULT true,
      "turns_skipping" int4 NOT NULL DEFAULT 0,
+     "grid" jsonb,
+     "is_current" bool DEFAULT false,
      CONSTRAINT "players_pkey" PRIMARY KEY ("player_id")
 );
 

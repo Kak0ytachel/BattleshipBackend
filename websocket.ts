@@ -27,14 +27,20 @@ const HANDLERS: { [key: string]:  (conn: WebSocket & { send_handle: typeof send_
         const result = await fastify.pg.query("SELECT start_game ($1, $2)", [user_id, join_code]);
         // TODO: add error handling
         const success: boolean = result.rows[0].start_game;
-        if (success) {
-            conn.send_handle("START-GAME", {success})
-            // TODO: add sending to the second player
-            // const result2 = await fastify.pg.query("SELECT get_opponent ($1, $2)", [user_id, game_id])
-
-        } else {
+        if (!success) {
             conn.send_handle("ERROR", {error: "Invalid join code"}) // TODO: replace event type
+            return;
         }
+        const result2 = await fastify.pg.query("SELECT get_opponent ($1)", [user_id])
+        const opponent_user_id = result2.rows[0].get_opponent;
+        conn.send_handle("START-GAME", {success})
+        const opponent_connection = connectionList[opponent_user_id];
+        if (opponent_connection == undefined) {
+            console.log("opponent connection undefined")
+            return
+        }
+        opponent_connection.send_handle("START-GAME", {success})
+        // TODO: add sending to the second player
     },
 
     "PLACE-SHIPS": async (conn, payload, fastify, user_id) => {
