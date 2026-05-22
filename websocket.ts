@@ -74,7 +74,13 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
         }
         conn.send_handle("PLACE-DONE", {});
         opponent_connection.send_handle("PLACE-DONE", {});
+        // TODO: add sending TURN-INFO
+    },
 
+    "QUESTIONS-GET": async (conn, payload, fastify, user_id) =>  {
+        const ans = await fastify.pg.query("SELECT get_questions ($1)", [user_id]);
+        const questions = ans.rows[0].get_questions; // TODO: send questions text too
+        conn.send_handle("QUESTIONS-SEND", {questions})
     },
 
     PING: async (conn, payload, fastify, user_id) => {

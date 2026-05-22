@@ -40,7 +40,7 @@ BEGIN
         END LOOP;
 
     -- INSERT GRID
-    UPDATE players SET grid = grid_dict where user_id = v_user_id and is_current = true and has_started = true and has_placed = false;
+    UPDATE players SET grid = grid_dict where user_id = v_user_id and is_current = true;
 
     IF NOT FOUND THEN
         RETURN -1; -- RETURNS -1 IF ERROR
