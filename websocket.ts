@@ -1,6 +1,8 @@
 import type {FastifyInstance} from "fastify";
 
-const connectionList: {[key: number]: WebSocket & { send_handle: typeof send_handle } } = {}
+type WebSocketPlus = WebSocket & { send_handle: typeof send_handle }
+
+const connectionList: {[key: number]: WebSocketPlus} = {}
 
 function send_handle(this: WebSocket, type: string, payload: Object) {
     // console.log(this, type, payload)
@@ -12,7 +14,14 @@ function send_handle(this: WebSocket, type: string, payload: Object) {
     )
 }
 
-const HANDLERS: { [key: string]:  (conn: WebSocket & { send_handle: typeof send_handle }, payload: Object, fastify: FastifyInstance, user_id: number) => Promise<void> } = {
+async function get_opponent_user_id(fastify: FastifyInstance, user_id: number) {
+    const result2 = await fastify.pg.query("SELECT get_opponent ($1)", [user_id])
+    const opponent_user_id: number = result2.rows[0].get_opponent;
+    return opponent_user_id;
+}
+
+
+const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify: FastifyInstance, user_id: number) => Promise<void> } = {
     "CREATE-GAME": async (conn, payload, fastify, user_id) => {
         // console.log(payload);
         // console.log(connectionList);
@@ -31,8 +40,8 @@ const HANDLERS: { [key: string]:  (conn: WebSocket & { send_handle: typeof send_
             conn.send_handle("ERROR", {error: "Invalid join code"}) // TODO: replace event type
             return;
         }
-        const result2 = await fastify.pg.query("SELECT get_opponent ($1)", [user_id])
-        const opponent_user_id = result2.rows[0].get_opponent;
+        const opponent_user_id = await get_opponent_user_id(fastify, user_id);
+
         conn.send_handle("START-GAME", {success})
         const opponent_connection = connectionList[opponent_user_id];
         if (opponent_connection == undefined) {
@@ -44,19 +53,28 @@ const HANDLERS: { [key: string]:  (conn: WebSocket & { send_handle: typeof send_
     },
 
     "PLACE-SHIPS": async (conn, payload, fastify, user_id) => {
-        const coordinates = ["A1", "B2", "C4", "C5"]
-        const game_id = 1;
+        const coordinates = (payload as {"coordinates": string[]}).coordinates;
 
-        const result = await fastify.pg.query("SELECT create_grid ($1, $2)", [user_id, coordinates]);
-        //TODO
+        const result = await fastify.pg.query("SELECT create_grid ($1, $2)", [coordinates, user_id]);
+        const code: number = result.rows[0].create_grid;
+        if (code === -1) {
+            fastify.log.error("create_grid failed")
+            return;
+        }
+        if (code == 1) {
+            // added but opponent not done yet
+            conn.send_handle("PLACE-WAIT", {})
+            return;
+        }
+        // const opponent_id = code;
+        const opponent_connection = connectionList[code];
+        if (!opponent_connection) {
+            fastify.log.error("opponent connection undefined")
+            return;
+        }
+        conn.send_handle("PLACE-DONE", {});
+        opponent_connection.send_handle("PLACE-DONE", {});
 
-        // const ships = {
-        //     "A1": {
-        //         "has_ship": true,
-        //         "is_shot": false,
-        //         "attempted": false
-        //     }
-        // }
     },
 
     PING: async (conn, payload, fastify, user_id) => {
