@@ -31,7 +31,7 @@ BEGIN
     SELECT currval(pg_get_serial_sequence('players','player_id')) into v_player_id;
 
     LOOP
-        code := generate_uid(5);
+        code := generate_uid(6);
         select count(*) from games where join_code = code into conflicts;
         IF conflicts = 0 THEN
             UPDATE games set join_code = code where game_id = v_game_id;

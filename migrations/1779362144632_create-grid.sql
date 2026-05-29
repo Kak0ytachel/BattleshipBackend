@@ -15,10 +15,14 @@ DECLARE
     v_game_id INT4;
     opponent_id INT4;
     is_empty bool;
+    d_player_id INT4;
+    d_grid JSONB;
 BEGIN
     -- GET GAME_ID
 
-    SELECT games.game_id into v_game_id FROM players left join games on (players.game_id = games.game_id) where players.user_id = v_user_id and has_started = true and has_placed = false and has_ended = false and is_current = true;
+    SELECT players.game_id into v_game_id FROM players left join games on (players.game_id = games.game_id) where players.user_id = v_user_id and is_current = true;
+
+    RAISE NOTICE 'game_id: %', v_game_id;
 
     -- CREATE GRID
     grid_size := 6;
@@ -49,11 +53,23 @@ BEGIN
     -- CHECK OPPONENT'S GRID
 
     SELECT players.user_id into opponent_id from games left join players on (games.game_id = players.game_id) where (games.game_id = v_game_id and players.user_id != v_user_id and is_active = true and is_current = true);
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'opponent_id not found';
+    end if;
+    RAISE NOTICE 'opponent_id: %', opponent_id;
 
-    SELECT (grid IS NULL) into is_empty FROM players where player_id = opponent_id and game_id = v_game_id;
 
-    IF (is_empty) THEN
+    SELECT (grid IS NULL OR grid = 'null'::jsonb),  player_id, grid  into is_empty, d_player_id, d_grid FROM players where user_id = opponent_id and game_id = v_game_id;
+    IF NOT FOUND THEN
+        RAISE NOTICE 'is_empty:: not found';
+    end if;
 
+    RAISE NOTICE 'd_player_id: %', d_player_id;
+    RAISE NOTICE 'is_empty: %', is_empty;
+    RAISE NOTICE 'd_grid: %', d_grid;
+
+    IF (is_empty IS NOT FALSE) THEN
+        UPDATE games SET current_turn = v_user_id where game_id = v_game_id;
         RETURN 1; -- RETURNS 1 IF OKAY BUT OPPONENT NOT DONE YET
 
     END IF;

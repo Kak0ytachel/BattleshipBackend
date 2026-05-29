@@ -6,6 +6,8 @@ CREATE TABLE "battleship"."users" (
    "games_won" int4 DEFAULT 0,
    "games_lost" int4 DEFAULT 0,
    "created_at" timestamp(0) DEFAULT now(),
+   "correct_answers" int4 NOT NULL DEFAULT 0,
+   "wrong_answers" int4 NOT NULL DEFAULT 0,
    CONSTRAINT "users_pkey" PRIMARY KEY ("user_id")
 );
 

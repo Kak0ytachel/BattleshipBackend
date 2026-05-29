@@ -1,9 +1,9 @@
 -- Up Migration
 
-CREATE OR REPLACE FUNCTION "battleship"."generate_uid"("len" int4=5)
+CREATE OR REPLACE FUNCTION "battleship"."generate_uid"("len" int4=6)
     RETURNS "pg_catalog"."varchar" AS $BODY$
 DECLARE
-    chars TEXT := 'QWERTYUIOPASDFGHJKLZXCVBNM1234567890';
+    chars TEXT := 'QWERTYUIPASDFGHJKLZXCVBNM1234567890';
     l INT := length(chars);
     i INT := 0;
     x INT := 0;
@@ -11,7 +11,7 @@ DECLARE
 BEGIN
     -- Routine body goes here...
     WHILE i < len LOOP
-            x := random() * l;
+            x := random() * (l - 1) + 1;
             output := output || substr(chars, x, 1);
             i := i + 1;
         END LOOP;
