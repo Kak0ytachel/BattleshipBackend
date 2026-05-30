@@ -127,14 +127,58 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
             return
         }
         console.log(ans);
-        const grid = ans.grid;
+        const grid: Record<string, {"is_shot": boolean, "has_ship": boolean, "attempted": boolean}> = ans.grid;
+
+        const has_ship = grid[coordinate]?.has_ship;
+
+        const base_x: number = Number(coordinate.split("")[0]); // 1-based
+        const base_y: number = Number(coordinate.charCodeAt(1) - 64); // 1-based
+
+        let has_left = false;
+
+        function checkNeighbours(base_x: number, base_y: number): [number, number, boolean] {
+            for (let x = Math.max(1, base_x - 1); x <= Math.min(base_x + 1, 6); x++) {
+                for (let y = Math.max(1, base_y - 1); y <= Math.min(base_y + 1, 6); y++) {
+                    const code = `${x}${String.fromCharCode(64 + y)}`;
+                    const is_left = grid[code]?.has_ship && !grid[code]?.is_shot;
+                    return [x, y, is_left];
+                }
+            }
+            return [0, 0, false];
+        }
+
+        const [x_a, y_a, l_a] = checkNeighbours(base_x, base_y);
+        if (l_a) {
+            has_left = true;
+        } else {
+            const [x_b, y_b, l_b] = checkNeighbours(x_a, y_a);
+            has_left = l_b;
+        }
+
+        let event = "";
+        if (isCorrect) {
+            if (has_ship) {
+                if (has_left) {
+                    event = "HIT";
+                } else {
+                    event = "SUNK";
+                }
+            } else {
+                event = "EMPTY";
+            }
+        } else {
+            event = "MISTAKE";
+        }
+
+
         const opponent_id = Number(ans.opponent_id);
 
-        conn.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": opponent_id, "grid": grid, "event": "SHOOT", "cell": "1A", "question": questionIndex, "answer": answer, "correct": correctAnswer});
+
+        conn.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": opponent_id, "grid": grid, "event": "SHOOT", "cell": "1A", "question": questionIndex, "answer": answer, "correct": correctAnswer, "result": event});
         // TODO: replace event type and cell
         const opponent_conn = connectionList[String(opponent_id)];
 
-        opponent_conn.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": opponent_id, "grid": grid, "event": "SHOOT", "cell": "1A"});
+        opponent_conn.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": opponent_id, "grid": grid, "event": "SHOOT", "cell": "1A", "result": event});
 
 
 
