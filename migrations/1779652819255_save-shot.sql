@@ -34,7 +34,7 @@ BEGIN
     IF v_is_correct THEN
         UPDATE players SET grid = jsonb_set(grid, ARRAY[v_coordinate, 'is_shot'], to_jsonb(true), true) where player_id = v_opponent_player_id;
     ELSE
-        UPDATE players SET grid = jsonb_set(grid, ARRAY[v_coordinate, 'tried'], to_jsonb(true), true) where player_id = v_opponent_player_id;
+        UPDATE players SET grid = jsonb_set(grid, ARRAY[v_coordinate, 'attempted'], to_jsonb(true), true) where player_id = v_opponent_player_id;
     END IF;
 
     -- update statistics for user (shooter)

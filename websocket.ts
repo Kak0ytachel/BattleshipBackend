@@ -1,4 +1,5 @@
 import type {FastifyInstance} from "fastify";
+import answersData from "./answers.json" with { type: 'json' };
 
 type WebSocketPlus = WebSocket & { send_handle: typeof send_handle }
 
@@ -23,9 +24,9 @@ async function get_opponent_user_id(fastify: FastifyInstance, user_id: number) {
 function check_answer(index: number, answer: string)  {
     const val = Math.random();
     const isCorrect = (val > 0.5);
-    const correctAnswer = 'abc';
+    const answers: Map<string, string> = new Map(Object.entries(answersData))
+    const correctAnswer = answers.get(String(index));
     return {isCorrect, correctAnswer};
-
     // TODO: implement
 }
 
@@ -129,11 +130,11 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
         const grid = ans.grid;
         const opponent_id = Number(ans.opponent_id);
 
-        conn.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": opponent_id, "grid": grid, "event": "START", "cell": "1A"});
+        conn.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": opponent_id, "grid": grid, "event": "SHOOT", "cell": "1A", "question": questionIndex, "answer": answer, "correct": correctAnswer});
         // TODO: replace event type and cell
         const opponent_conn = connectionList[String(opponent_id)];
 
-        opponent_conn.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": opponent_id, "grid": grid, "event": "START", "cell": "1A"});
+        opponent_conn.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": opponent_id, "grid": grid, "event": "SHOOT", "cell": "1A"});
 
 
 

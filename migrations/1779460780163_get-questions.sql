@@ -3,7 +3,7 @@
 CREATE OR REPLACE FUNCTION "battleship"."get_questions"("v_user_id" int4, "num" int4=4)
     RETURNS int[] AS $BODY$
 DECLARE
-    max_number int4 := 99; -- zero-based
+    max_number int4 := 79; -- zero-based
     v_player_id int4;
     num_left int4;
     is_empty bool;
@@ -46,7 +46,7 @@ BEGIN
             -- FLIP CHOSEN TO 1
             UPDATE players SET questions = set_bit(questions, item.idx, 1) WHERE player_id = v_player_id;
             -- ADD TO ANS
-            ans := array_append(ans, item.idx);
+            ans := array_append(ans, item.idx + 1);
         END LOOP;
 
     RETURN ans;
