@@ -10,6 +10,9 @@ CREATE TABLE "battleship"."players" (
      "is_current" bool DEFAULT false,
      "questions" varbit(100),
      "topics" varbit(20),
+     "correct_answers" int4 NOT NULL DEFAULT 0,
+     "wrong_answers" int4 NOT NULL DEFAULT 0,
+     "bombs_placed" int4 NOT NULL DEFAULT 0,
      CONSTRAINT "players_pkey" PRIMARY KEY ("player_id")
 );
 

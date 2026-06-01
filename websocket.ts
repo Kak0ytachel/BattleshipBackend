@@ -23,7 +23,7 @@ async function get_opponent_user_id(fastify: FastifyInstance, user_id: number) {
 
 function check_answer(index: number, answer: string)  {
     const val = Math.random();
-    const isCorrect = (val > 0.5);
+    const isCorrect = (val < 0.9);
     const answers: Map<string, string> = new Map(Object.entries(answersData))
     const correctAnswer = answers.get(String(index));
     return {isCorrect, correctAnswer};
@@ -137,23 +137,39 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
         let has_left = false;
 
         function checkNeighbours(base_x: number, base_y: number): [number, number, boolean] {
+            let [x_i, y_i] = [0, 0];
             for (let x = Math.max(1, base_x - 1); x <= Math.min(base_x + 1, 6); x++) {
                 for (let y = Math.max(1, base_y - 1); y <= Math.min(base_y + 1, 6); y++) {
+                    if (x === base_x && y === base_y) {
+                        continue;
+                    }
                     const code = `${x}${String.fromCharCode(64 + y)}`;
-                    const is_left = grid[code]?.has_ship && !grid[code]?.is_shot;
-                    return [x, y, is_left];
+                    if (grid[code]?.has_ship) {
+                        const is_left = !grid[code]?.is_shot;
+                        if (is_left) {
+                            return [x, y, is_left];
+                        } else {
+                            x_i = x;
+                            y_i = y;
+                        }
+                    }
                 }
             }
-            return [0, 0, false];
+            return [x_i, y_i, false];
         }
 
         const [x_a, y_a, l_a] = checkNeighbours(base_x, base_y);
-        if (l_a) {
-            has_left = true;
+        if (x_a == 0) {
+            has_left = false;
         } else {
-            const [x_b, y_b, l_b] = checkNeighbours(x_a, y_a);
-            has_left = l_b;
+            if (l_a) {
+                has_left = true;
+            } else {
+                const [x_b, y_b, l_b] = checkNeighbours(x_a, y_a);
+                has_left = l_b;
+            }
         }
+
 
         let event = "";
         if (isCorrect) {
@@ -170,16 +186,28 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
             event = "MISTAKE";
         }
 
+        let leftShips = false;
+        for (const [cell, info] of Object.entries(grid)) {
+            if (info.has_ship && !info.is_shot) {
+                leftShips = true;
+                break;
+            }
+        }
 
         const opponent_id = Number(ans.opponent_id);
-
-
-        conn.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": opponent_id, "grid": grid, "event": "SHOOT", "cell": "1A", "question": questionIndex, "answer": answer, "correct": correctAnswer, "result": event});
+        conn.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": leftShips? opponent_id : -1, "grid": grid, "event": "SHOOT", "cell": coordinate, "question": questionIndex, "answer": answer, "correct": correctAnswer, "result": event});
         // TODO: replace event type and cell
         const opponent_conn = connectionList[String(opponent_id)];
 
-        opponent_conn.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": opponent_id, "grid": grid, "event": "SHOOT", "cell": "1A", "result": event});
+        opponent_conn?.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": leftShips? opponent_id : -1, "grid": grid, "event": "SHOOT", "cell": coordinate, "result": event});
 
+        if (!leftShips) {
+            const result2 = await fastify.pg.query("SELECT end_game ($1)", [user_id]);
+            const stats = result2.rows[0].end_game;
+
+            conn.send_handle("END-GAME", {"winner": user_id, "stats": stats });
+            opponent_conn?.send_handle("END-GAME", {"winner": user_id, "stats": stats});
+        }
 
 
     },

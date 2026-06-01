@@ -23,16 +23,18 @@ fastify.register(fastifyWebsocket)
 fastify.register(routes)
 fastify.register(websocket_routes)
 fastify.register(fastifyCors, {
-    origin: (origin: any, cb) => {
-        const hostname = (origin)?(new URL(origin).hostname): "";
-        if(hostname === "localhost" || hostname === ""){
-            //  Request from localhost will pass
-            cb(null, true)
-            return
-        }
-        // Generate an error on other origins, disabling access
-        cb(new Error("Not allowed"), false)
-    }
+    origin: "*"
+    //
+    //     (origin: any, cb) => {
+    //     const hostname = (origin)?(new URL(origin).hostname): "";
+    //     if(hostname === "localhost" || hostname === ""){
+    //         //  Request from localhost will pass
+    //         cb(null, true)
+    //         return
+    //     }
+    //     // Generate an error on other origins, disabling access
+    //     cb(new Error("Not allowed"), false)
+    // }
 })
 fastify.register(fastifyJwt, {
     secret: "abc", // TODO: replace with env variable

@@ -40,8 +40,10 @@ BEGIN
     -- update statistics for user (shooter)
     IF v_is_correct THEN
         UPDATE users set correct_answers = correct_answers + 1 where user_id = v_user_id;
+        UPDATE players set correct_answers = correct_answers + 1 where player_id = v_player_id;
     ELSE
         UPDATE users set wrong_answers = wrong_answers + 1 where user_id = v_user_id;
+        UPDATE players set wrong_answers = wrong_answers + 1 where player_id = v_player_id;
     END IF;
 
     -- go to next turn
