@@ -1,5 +1,5 @@
+import 'dotenv/config';
 import Fastify from 'fastify'
-
 import fastifyWebsocket from "@fastify/websocket";
 import fastifyCors from "@fastify/cors";
 import fastifyJwt from "@fastify/jwt";
