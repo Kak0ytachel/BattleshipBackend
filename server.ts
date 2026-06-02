@@ -3,7 +3,7 @@ import Fastify from 'fastify'
 import fastifyWebsocket from "@fastify/websocket";
 import fastifyCors from "@fastify/cors";
 import fastifyJwt from "@fastify/jwt";
-
+import {runner} from 'node-pg-migrate';
 import routes from './route.ts'
 import websocket_routes from './websocket.ts'
 import dbConnector from './postgres-connector.ts'
@@ -45,6 +45,12 @@ fastify.register(fastifyJwt, {
 
 const start = async () => {
     try {
+        await runner({
+            databaseUrl: process.env.DATABASE_URL,
+            dir: 'migrations',
+            direction: 'up',
+            singleTransaction: true // Keep it atomic
+        });
         await fastify.listen({ port: 3000, host: '0.0.0.0'})
     } catch (err) {
         fastify.log.error(err)
@@ -52,5 +58,3 @@ const start = async () => {
     }
 }
 start()
-
-
