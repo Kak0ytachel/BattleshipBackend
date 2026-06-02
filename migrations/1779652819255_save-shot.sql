@@ -11,6 +11,10 @@ DECLARE
     v_has_ship bool;
     v_grid jsonb;
     result_json jsonb;
+    v_user_skipping int4;
+    v_opponent_skipping int4;
+    v_min_skipping int4;
+    v_next int4;
 BEGIN
     -- get opponent and user 's players
     v_opponent_user_id := "battleship".get_opponent(v_user_id);
@@ -48,13 +52,35 @@ BEGIN
 
     -- go to next turn
 
-    UPDATE games set current_turn = v_opponent_user_id where game_id = v_game_id;
-    -- TODO: implement skipping turns on bombing
+--     UPDATE games set current_turn = v_opponent_user_id where game_id = v_game_id;
+--     TODO: implement skipping turns on bombing
+
+    SELECT turns_skipping into v_user_skipping from players where player_id = v_player_id;
+    SELECT turns_skipping into v_opponent_skipping from players where player_id = v_opponent_player_id;
+
+    v_min_skipping := greatest(least(v_user_skipping, v_opponent_skipping), 0);
+
+    UPDATE players set turns_skipping = turns_skipping - v_min_skipping where player_id = v_player_id;
+    UPDATE players set turns_skipping = turns_skipping - v_min_skipping where player_id = v_opponent_player_id;
+
+    v_user_skipping := v_user_skipping - v_min_skipping;
+    v_opponent_skipping := v_opponent_skipping - v_min_skipping;
+
+    IF v_opponent_skipping = 0 THEN
+        UPDATE games set current_turn = v_opponent_user_id where game_id = v_game_id;
+        UPDATE players set turns_skipping = greatest(0, turns_skipping - 1) where player_id = v_player_id;
+        v_next := v_opponent_user_id;
+    ELSE
+        UPDATE games set current_turn = v_user_id where game_id = v_game_id;
+        UPDATE players set turns_skipping = greatest(0, turns_skipping - 1) where player_id = v_opponent_player_id;
+        v_next = v_user_id;
+    end if;
+
 
     select grid into v_grid from players where player_id = v_opponent_player_id;
     RAISE NOTICE 'v_grid: %', v_grid;
 
-    result_json := jsonb_build_object('grid', v_grid, 'opponent_id', v_opponent_user_id);
+    result_json := jsonb_build_object('grid', v_grid, 'opponent_id', v_opponent_user_id, 'next', v_next);
 
     RAISE NOTICE 'result_json: %', result_json;
 

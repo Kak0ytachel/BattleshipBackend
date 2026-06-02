@@ -111,9 +111,16 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
 
     "QUESTIONS-GET": async (conn, payload, fastify, user_id) =>  {
         const ans = await fastify.pg.query("SELECT get_questions ($1)", [user_id]);
-        const questions = ans.rows[0].get_questions; // TODO: send questions text too
+        const questions = ans.rows[0].get_questions;
         console.log(questions)
         conn.send_handle("QUESTIONS-SEND", {questions})
+    },
+
+    "TOPICS-GET": async (conn, payload, fastify, user_id) =>  {
+        const ans = await fastify.pg.query("SELECT get_topics ($1)", [user_id]);
+        const topics = ans.rows[0].get_topics;
+        console.log(topics)
+        conn.send_handle("TOPICS-SEND", {topics})
     },
 
     "SHOOT": async (conn, payload, fastify, user_id) => {
@@ -121,7 +128,7 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
         const {isCorrect, correctAnswer} = check_answer(questionIndex, answer);
         const result = await fastify.pg.query("SELECT save_shot ($1, $2, $3)", [user_id, coordinate, isCorrect]);
 
-        const ans: {grid: {}, opponent_id: number} = result.rows[0].save_shot;
+        const ans: {grid: {}, opponent_id: number, next: number} = result.rows[0].save_shot;
         if ("error" in ans) {
             conn.send_handle("ERROR", {"error": "wrong turn"});
             return
@@ -193,13 +200,14 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
                 break;
             }
         }
+        const next = ans.next;
 
         const opponent_id = Number(ans.opponent_id);
-        conn.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": leftShips? opponent_id : -1, "grid": grid, "event": "SHOOT", "cell": coordinate, "question": questionIndex, "answer": answer, "correct": correctAnswer, "result": event});
+        conn.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": leftShips? next : -1, "grid": grid, "event": "SHOOT", "cell": coordinate, "question": questionIndex, "answer": answer, "correct": correctAnswer, "result": event});
         // TODO: replace event type and cell
         const opponent_conn = connectionList[String(opponent_id)];
 
-        opponent_conn?.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": leftShips? opponent_id : -1, "grid": grid, "event": "SHOOT", "cell": coordinate, "result": event});
+        opponent_conn?.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": leftShips? next : -1, "grid": grid, "event": "SHOOT", "cell": coordinate, "result": event});
 
         if (!leftShips) {
             const result2 = await fastify.pg.query("SELECT end_game ($1)", [user_id]);
@@ -217,6 +225,64 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
             date: Date.now(),
             user_id: user_id
         })
+    },
+    "REQUEST-BOMBING": async (conn, payload, fastify, user_id: number) => {
+        const topic = (payload as {topic: number}).topic;
+        const ans = await fastify.pg.query("SELECT request_bombing($1, $2)", [user_id, topic])
+        const opponent_id = ans.rows[0].request_bombing;
+        connectionList[opponent_id]?.send_handle("REQUEST-RATE", {"topic": topic});
+    },
+    "RATE-DONE": async (conn, payload, fastify, user_id: number) => {
+        const grade = (payload as {grade: number}).grade;
+        const ans = await fastify.pg.query("SELECT rate_done($1, $2)", [user_id, grade])
+        const opponent_id = ans.rows[0].rate_done;
+        connectionList[opponent_id]?.send_handle("BOMBING-READY", {});
+    },
+    "BOMB": async (conn, payload, fastify, user_id: number) =>{
+        const cell = (payload as {cell: string, grade: number}).cell;
+
+        const normalize = (x: number) => {return Math.max(2, Math.min(5, x));}
+        const base_x: number = normalize(Number(cell.split("")[0])); // 1-based
+        const base_y: number = normalize(Number(cell.charCodeAt(1) - 64)); // 1-based
+
+        const cells: string[] = [];
+        for (let x = base_x - 1; x <= base_x + 1; x++) {
+            for (let y = base_y - 1; y <= base_y + 1; y++) {
+                const code = `${x}${String.fromCharCode(64 + y)}`;
+                cells.push(code);
+            }
+        }
+        cells.sort((a, b) => Math.random() - 0.5);
+
+        const grade = (payload as {cell: string, grade: number}).grade;
+        const ans = await fastify.pg.query("SELECT BOMB($1, $2, $3)", [user_id, cells, grade]);
+        const result = ans.rows[0].bomb as {grid: Object, opponent_id: number, power: number, cells: string[], next: number}
+
+        const grid = result.grid;
+        const opponent_id = result.opponent_id;
+        const power = result.power;
+        const result_cells = result.cells;
+
+        let leftShips = false;
+        for (const [cell, info_] of Object.entries(grid)) {
+            const info = info_ as {has_ship: boolean, is_shot: boolean}
+            if (info.has_ship && !info.is_shot) {
+                leftShips = true;
+                break;
+            }
+        }
+        const next = result.next;
+
+        conn.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": leftShips? next : -1, "grid": grid, "event": "BOMB", "cells": result_cells, "power": power});
+        connectionList[String(opponent_id)]?.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": leftShips? next : -1, "grid": grid, "event": "BOMB", "cells": result_cells, "power": power})
+
+        if (!leftShips) {
+            const result2 = await fastify.pg.query("SELECT end_game ($1)", [user_id]);
+            const stats = result2.rows[0].end_game;
+
+            conn.send_handle("END-GAME", {"winner": user_id, "stats": stats });
+            connectionList[String(opponent_id)]?.send_handle("END-GAME", {"winner": user_id, "stats": stats});
+        }
     }
 }
 
@@ -263,8 +329,9 @@ async function websocket_routes(fastify: FastifyInstance, options: Object) {
 
                 }
                 else {
-                    console.log('Unknown message type')
-                    connection.send_handle("ERROR", {"error": "Unknown message type"})
+                    console.log('Unknown message type:', type)
+                    connection.send_handle("ERROR", {"error": "Unknown message type: " + type})
+                    console.log(type, payload);
                 }
             });
             connection.send_handle("HELLO", {})

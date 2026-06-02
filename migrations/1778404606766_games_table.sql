@@ -8,6 +8,8 @@ CREATE TABLE "battleship"."games" (
   "has_ended" bool NOT NULL DEFAULT false,
   "is_singleplayer" bool NOT NULL DEFAULT false,
   "join_code" varchar(255) COLLATE "pg_catalog"."default" DEFAULT NULL::character varying,
+  "speech_topic" int4 DEFAULT NULL,
+  "speech_grade" int4 DEFAULT NULL,
   CONSTRAINT "games_pkey" PRIMARY KEY ("game_id")
 );
 
