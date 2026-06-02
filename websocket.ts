@@ -297,6 +297,12 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
         const stats = ans2.rows[0].end_game;
         conn.send_handle("TERMINATE-DONE", {});
         connectionList[String(opponent_id)]?.send_handle("END-GAME", {"winner": opponent_id, "stats": stats, "terminated": true});
+    },
+    "STATS-GET": async (conn: WebSocketPlus, payload, fastify: FastifyInstance, user_id: number) => {
+        const ans = await fastify.pg.query("SELECT user_id, name, games_won, games_lost, correct_answers, wrong_answers FROM battleship.users");
+        const rows = ans.rows;
+
+        conn.send_handle("STATS-SEND", {"stats": rows});
     }
 }
 
