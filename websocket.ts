@@ -283,6 +283,20 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
             conn.send_handle("END-GAME", {"winner": user_id, "stats": stats });
             connectionList[String(opponent_id)]?.send_handle("END-GAME", {"winner": user_id, "stats": stats});
         }
+    },
+    "CHECK-GAME": async (conn: WebSocketPlus, payload, fastify: FastifyInstance, user_id: number) => {
+        const ans = await fastify.pg.query("SELECT check_game($1)", [user_id]);
+        const game_id = ans.rows[0].check_game;
+        conn.send_handle("GAME-INFO", {"game_id": game_id});
+    },
+    "TERMINATE-GAME": async (conn: WebSocketPlus, payload, fastify: FastifyInstance, user_id: number) => {
+        const ans1 = await fastify.pg.query("SELECT get_opponent($1)", [user_id]);
+        const opponent_id = ans1.rows[0].get_opponent;
+
+        const ans2 = await fastify.pg.query("SELECT end_game($1)", [opponent_id]);
+        const stats = ans2.rows[0].end_game;
+        conn.send_handle("TERMINATE-DONE", {});
+        connectionList[String(opponent_id)]?.send_handle("END-GAME", {"winner": opponent_id, "stats": stats, "terminated": true});
     }
 }
 
