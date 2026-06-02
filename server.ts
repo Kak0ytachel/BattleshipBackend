@@ -39,17 +39,17 @@ fastify.register(fastifyCors, {
 fastify.register(fastifyJwt, {
     secret: "abc", // TODO: replace with env variable
     sign: {
-        expiresIn: '10m' // TODO: replace with higher value after propper testing
+        expiresIn: '10h' // TODO: replace with higher value after propper testing
     }
 })
 
 const start = async () => {
-    // try {
+    try {
         await fastify.listen({ port: 3000, host: '0.0.0.0'})
-    // } catch (err) {
-    //     fastify.log.error(err)
-    //     process.exit(1)
-    // }
+    } catch (err) {
+        fastify.log.error(err)
+        // process.exit(1)
+    }
 }
 start()
 

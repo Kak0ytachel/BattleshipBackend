@@ -22,14 +22,24 @@ async function get_opponent_user_id(fastify: FastifyInstance, user_id: number) {
 }
 
 function check_answer(index: number, answer: string)  {
-    const val = Math.random();
-    const isCorrect = (val < 0.9);
+    // const val = Math.random();
     const answers: Map<string, string> = new Map(Object.entries(answersData))
-    const correctAnswer = answers.get(String(index));
+    const correctAnswer = answers.get(String(index)) || "ERROR";
+    const isCorrect: boolean = spellChecker(answer, correctAnswer)//(val < 0.9);
     return {isCorrect, correctAnswer};
-    // TODO: implement
 }
 
+function spellChecker(s: string, p: string): boolean {
+    const pairs = {"ż": "z", "ź": "z", "ę": "e", "ó": "o", "ą": "a", "ś": "s", "ł": "l", "ć": "c", "ń": "n"};
+    function clean(a: string): string {
+        a = a.toLowerCase();
+        for (let [s1, s2] of Object.entries(pairs)) {
+            a = a.replace(s1, s2);
+        }
+        return a;
+    }
+    return (clean(s) === clean(p));
+}
 
 const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify: FastifyInstance, user_id: number) => Promise<void> } = {
     "CREATE-GAME": async (conn, payload, fastify, user_id) => {
