@@ -5,6 +5,10 @@ import type {FastifyInstance} from "fastify";
 async function dbConnector (fastify: FastifyInstance, options: Object) {
     fastify.register(fastifyPostgres, {
         connectionString: process.env.DATABASE_URL,
+        onConnect: async (client) => {
+            const a = await client.query('SET search_path TO battleship, public');
+            console.log('set executed');
+        }
     }) // TODO: move password to env variable
 
     fastify.ready((err) => {
