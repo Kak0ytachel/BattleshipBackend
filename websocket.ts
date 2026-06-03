@@ -32,7 +32,7 @@ function check_answer(index: number, answer: string)  {
 function spellChecker(s: string, p: string): boolean {
     const pairs = {"ż": "z", "ź": "z", "ę": "e", "ó": "o", "ą": "a", "ś": "s", "ł": "l", "ć": "c", "ń": "n"};
     function clean(a: string): string {
-        a = a.toLowerCase();
+        a = a.toLowerCase().trim();
         for (let [s1, s2] of Object.entries(pairs)) {
             a = a.replace(s1, s2);
         }
