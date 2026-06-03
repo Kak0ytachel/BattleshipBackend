@@ -44,7 +44,7 @@ async function routes (fastify: FastifyInstance, options: Object) {
     fastify.get<{Querystring: {name?: string};}>('/create-user', async (request, reply) => {
         const { name: name } = request.query;
         const client = await fastify.pg.connect()
-        const result: any = await client.query('SELECT create_user ($1);', [name]);
+        const result: any = await client.query('SELECT battleship.create_user ($1);', [name]);
         client.release()
         const user_id = result.rows[0].create_user
         console.log(user_id)
