@@ -17,10 +17,10 @@ async function routes (fastify: FastifyInstance, options: Object) {
 
     fastify.get('/', opts, async (request, reply) => {
 
-        fastify.pg.query('SELECT * FROM USERS ORDER BY USER_ID ASC;', [], (err, res) => {
-            request.log.debug(err, res.rows[0])
-            console.log(err, res.rows[0])
-        });
+        // fastify.pg.query('SELECT * FROM USERS ORDER BY USER_ID ASC;', [], (err, res) => {
+        //     request.log.debug(err, res.rows[0])
+        //     console.log(err, res.rows[0])
+        // });
         return { hello: 'world' }
     })
 

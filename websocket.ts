@@ -16,7 +16,7 @@ function send_handle(this: WebSocket, type: string, payload: Object) {
 }
 
 async function get_opponent_user_id(fastify: FastifyInstance, user_id: number) {
-    const result2 = await fastify.pg.query("SELECT get_opponent ($1)", [user_id])
+    const result2 = await fastify.pg.query("SELECT battleship.get_opponent ($1)", [user_id])
     const opponent_user_id: number = result2.rows[0].get_opponent;
     return opponent_user_id;
 }
@@ -46,7 +46,7 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
         // console.log(payload);
         // console.log(connectionList);
         try {
-            const result = await fastify.pg.query("SELECT create_game ($1)", [user_id]);
+            const result = await fastify.pg.query("SELECT battleship.create_game ($1)", [user_id]);
             const join_code = result.rows[0].create_game; // TODO: add error handling
             conn.send_handle("JOIN-CODE", {join_code}) //TODO: replace ANS type
         } catch (e: any ) {
@@ -59,7 +59,7 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
     "JOIN-GAME": async (conn, payload, fastify, user_id) => {
         // console.log(payload?.join_code);
         const join_code = (payload as {join_code: string}).join_code;
-        const result = await fastify.pg.query("SELECT start_game ($1, $2)", [user_id, join_code]);
+        const result = await fastify.pg.query("SELECT battleship.start_game ($1, $2)", [user_id, join_code]);
         // TODO: add error handling
         const success: boolean = result.rows[0].start_game;
         if (!success) {
@@ -80,7 +80,7 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
     "PLACE-SHIPS": async (conn, payload, fastify, user_id) => {
         const coordinates = (payload as {"coordinates": string[]}).coordinates;
         const coordinatesJson = JSON.stringify(coordinates);
-        const result = await fastify.pg.query("SELECT create_grid ($1, $2)", [coordinatesJson, user_id]);
+        const result = await fastify.pg.query("SELECT battleship.create_grid ($1, $2)", [coordinatesJson, user_id]);
         const code: number = result.rows[0].create_grid;
         if (code === -1) {
             fastify.log.error("create_grid failed")
@@ -120,14 +120,14 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
     },
 
     "QUESTIONS-GET": async (conn, payload, fastify, user_id) =>  {
-        const ans = await fastify.pg.query("SELECT get_questions ($1)", [user_id]);
+        const ans = await fastify.pg.query("SELECT battleship.get_questions ($1)", [user_id]);
         const questions = ans.rows[0].get_questions;
         console.log(questions)
         conn.send_handle("QUESTIONS-SEND", {questions})
     },
 
     "TOPICS-GET": async (conn, payload, fastify, user_id) =>  {
-        const ans = await fastify.pg.query("SELECT get_topics ($1)", [user_id]);
+        const ans = await fastify.pg.query("SELECT battleship.get_topics ($1)", [user_id]);
         const topics = ans.rows[0].get_topics;
         console.log(topics)
         conn.send_handle("TOPICS-SEND", {topics})
@@ -136,7 +136,7 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
     "SHOOT": async (conn, payload, fastify, user_id) => {
         const {questionIndex, answer, coordinate } = payload as {questionIndex: number, answer: string, coordinate: string}
         const {isCorrect, correctAnswer} = check_answer(questionIndex, answer);
-        const result = await fastify.pg.query("SELECT save_shot ($1, $2, $3)", [user_id, coordinate, isCorrect]);
+        const result = await fastify.pg.query("SELECT battleship.save_shot ($1, $2, $3)", [user_id, coordinate, isCorrect]);
 
         const ans: {grid: {}, opponent_id: number, next: number} = result.rows[0].save_shot;
         if ("error" in ans) {
@@ -220,7 +220,7 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
         opponent_conn?.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": leftShips? next : -1, "grid": grid, "event": "SHOOT", "cell": coordinate, "result": event});
 
         if (!leftShips) {
-            const result2 = await fastify.pg.query("SELECT end_game ($1)", [user_id]);
+            const result2 = await fastify.pg.query("SELECT battleship.end_game ($1)", [user_id]);
             const stats = result2.rows[0].end_game;
 
             conn.send_handle("END-GAME", {"winner": user_id, "stats": stats });
@@ -238,13 +238,13 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
     },
     "REQUEST-BOMBING": async (conn, payload, fastify, user_id: number) => {
         const topic = (payload as {topic: number}).topic;
-        const ans = await fastify.pg.query("SELECT request_bombing($1, $2)", [user_id, topic])
+        const ans = await fastify.pg.query("SELECT battleship.request_bombing($1, $2)", [user_id, topic])
         const opponent_id = ans.rows[0].request_bombing;
         connectionList[opponent_id]?.send_handle("REQUEST-RATE", {"topic": topic});
     },
     "RATE-DONE": async (conn, payload, fastify, user_id: number) => {
         const grade = (payload as {grade: number}).grade;
-        const ans = await fastify.pg.query("SELECT rate_done($1, $2)", [user_id, grade])
+        const ans = await fastify.pg.query("SELECT battleship.rate_done($1, $2)", [user_id, grade])
         const opponent_id = ans.rows[0].rate_done;
         connectionList[opponent_id]?.send_handle("BOMBING-READY", {});
     },
@@ -265,7 +265,7 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
         cells.sort((a, b) => Math.random() - 0.5);
 
         const grade = (payload as {cell: string, grade: number}).grade;
-        const ans = await fastify.pg.query("SELECT BOMB($1, $2, $3)", [user_id, cells, grade]);
+        const ans = await fastify.pg.query("SELECT battleship.BOMB($1, $2, $3)", [user_id, cells, grade]);
         const result = ans.rows[0].bomb as {grid: Object, opponent_id: number, power: number, cells: string[], next: number}
 
         const grid = result.grid;
@@ -287,7 +287,7 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
         connectionList[String(opponent_id)]?.send_handle("TURN-INFO", {"current_turn": user_id,  "next_turn": leftShips? next : -1, "grid": grid, "event": "BOMB", "cells": result_cells, "power": power})
 
         if (!leftShips) {
-            const result2 = await fastify.pg.query("SELECT end_game ($1)", [user_id]);
+            const result2 = await fastify.pg.query("SELECT battleship.end_game ($1)", [user_id]);
             const stats = result2.rows[0].end_game;
 
             conn.send_handle("END-GAME", {"winner": user_id, "stats": stats });
@@ -295,15 +295,15 @@ const HANDLERS: { [key: string]:  (conn: WebSocketPlus, payload: Object, fastify
         }
     },
     "CHECK-GAME": async (conn: WebSocketPlus, payload, fastify: FastifyInstance, user_id: number) => {
-        const ans = await fastify.pg.query("SELECT check_game($1)", [user_id]);
+        const ans = await fastify.pg.query("SELECT battleship.check_game($1)", [user_id]);
         const game_id = ans.rows[0].check_game;
         conn.send_handle("GAME-INFO", {"game_id": game_id});
     },
     "TERMINATE-GAME": async (conn: WebSocketPlus, payload, fastify: FastifyInstance, user_id: number) => {
-        const ans1 = await fastify.pg.query("SELECT get_opponent($1)", [user_id]);
+        const ans1 = await fastify.pg.query("SELECT battleship.get_opponent($1)", [user_id]);
         const opponent_id = ans1.rows[0].get_opponent;
 
-        const ans2 = await fastify.pg.query("SELECT end_game($1)", [opponent_id]);
+        const ans2 = await fastify.pg.query("SELECT battleship.end_game($1)", [opponent_id]);
         const stats = ans2.rows[0].end_game;
         conn.send_handle("TERMINATE-DONE", {});
         connectionList[String(opponent_id)]?.send_handle("END-GAME", {"winner": opponent_id, "stats": stats, "terminated": true});
